@@ -3,6 +3,7 @@ name: Update Remaining Estimate
 on:
   issues:
     types: [edited, opened, reopened]
+    workflow_dispatch:
 
 jobs:
   update-remaining:
