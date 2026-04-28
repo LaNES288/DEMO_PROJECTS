@@ -10,7 +10,7 @@ jobs:
 
     steps:
       - name: Calculate Remaining Estimate
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -34,10 +34,13 @@ jobs:
                         }
                         fieldValues(first: 20) {
                           nodes {
+                            __typename
                             ... on ProjectV2ItemFieldNumberValue {
                               field {
-                                id
-                                name
+                                ... on ProjectV2FieldCommon {
+                                  id
+                                  name
+                                }
                               }
                               number
                             }
