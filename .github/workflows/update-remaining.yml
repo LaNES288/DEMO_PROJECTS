@@ -3,6 +3,12 @@ name: Update Remaining Estimate
 on:
   issues:
     types: [edited, opened, reopened]
+  workflow_dispatch:
+
+permissions:
+  repository-projects: write
+  contents: read
+  issues: read
 
 jobs:
   update-remaining:
