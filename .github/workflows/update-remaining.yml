@@ -21,11 +21,6 @@ jobs:
 
             const issueNodeId = context.payload.issue.node_id;
 
-            console.log("FIELDS FOUND:");
-            for (const field of item.fieldValues.nodes) {
-              console.log(field.field?.name, field.field?.id, field.number);
-            }
-
             // Fetch project item linked to this issue
             const query = `
               query($issueId: ID!) {
