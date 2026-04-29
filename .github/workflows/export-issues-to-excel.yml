@@ -1,0 +1,81 @@
+name: Export Issues to Excel
+
+on:
+  workflow_dispatch:   # manual trigger
+  schedule:
+    - cron: "0 10 * * *"  # runs daily at 10:00 UTC
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pandas openpyxl requests
+
+      - name: Export GitHub Issues to Excel
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          python <<EOF
+          import requests
+          import pandas as pd
+          import os
+
+          token = os.environ["GITHUB_TOKEN"]
+          repo = os.environ["REPO"]
+
+          headers = {
+              "Authorization": f"Bearer {token}",
+              "Accept": "application/vnd.github+json"
+          }
+
+          issues = []
+          page = 1
+
+          while True:
+              url = f"https://api.github.com/repos/{repo}/issues?state=all&per_page=100&page={page}"
+              response = requests.get(url, headers=headers)
+              data = response.json()
+
+              if not data:
+                  break
+
+              for issue in data:
+                  if "pull_request" in issue:
+                      continue  # skip PRs
+
+                  issues.append({
+                      "ID": issue["number"],
+                      "Title": issue["title"],
+                      "State": issue["state"],
+                      "Created At": issue["created_at"],
+                      "Updated At": issue["updated_at"],
+                      "Assignee": issue["assignee"]["login"] if issue["assignee"] else None,
+                      "Labels": ", ".join([label["name"] for label in issue["labels"]])
+                  })
+
+              page += 1
+
+          df = pd.DataFrame(issues)
+
+          output_file = "github_issues.xlsx"
+          df.to_excel(output_file, index=False)
+
+          print(f"Exported {len(df)} issues to {output_file}")
+          EOF
+
+      - name: Upload Excel file
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-issues-report
+          path: github_issues.xlsx
