@@ -1,9 +1,9 @@
 name: Export Issues to Excel
 
 on:
-  workflow_dispatch:   # manual trigger
+  workflow_dispatch:
   schedule:
-    - cron: "0 10 * * *"  # runs daily at 10:00 UTC
+    - cron: "0 6 * * *"
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -55,7 +55,7 @@ jobs:
 
               for issue in data:
                   if "pull_request" in issue:
-                      continue  # skip PRs
+                      continue
 
                   issues.append({
                       "ID": issue["number"],
@@ -70,11 +70,9 @@ jobs:
               page += 1
 
           df = pd.DataFrame(issues)
+          df.to_excel("github_issues.xlsx", index=False)
 
-          output_file = "github_issues.xlsx"
-          df.to_excel(output_file, index=False)
-
-          print(f"Exported {len(df)} issues to {output_file}")
+          print(f"Exported {len(df)} issues")
           EOF
 
       - name: Upload Excel file
