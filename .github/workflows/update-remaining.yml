@@ -3,7 +3,6 @@ name: Update Remaining Estimate
 on:
   issues:
     types: [edited, opened, reopened]
-    workflow_dispatch:
 
 jobs:
   update-remaining:
@@ -72,15 +71,17 @@ jobs:
               let spent = 0;
 
               for (const field of item.fieldValues.nodes) {
-                if (field.field.id === originalFieldId) {
-                  original = field.number || 0;
-                }
-                if (field.field.id === timeSpentFieldId) {
-                  spent = field.number || 0;
-                }
+                    if (field.field?.name === "Original Estimate (Days)") {
+                          original = field.number || 0;
+                      }
+                if (field.field?.name === "Time Spent (Days)") {
+                    spent = field.number || 0;
+                    }
               }
 
               const remaining = original - spent;
+
+              console.log(`Original: ${original}, Spent: ${spent}, Remaining: ${remaining}`);
 
               // Update Remaining field
               const mutation = `
