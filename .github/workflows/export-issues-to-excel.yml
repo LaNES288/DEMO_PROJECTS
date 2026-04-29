@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: "0 10 * * *"  # runs daily at 10:00 UTC
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   export:
     runs-on: ubuntu-latest
