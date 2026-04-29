@@ -1,0 +1,37 @@
+name: Export Project to Excel
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * *"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pandas openpyxl requests
+
+      - name: Run export script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROJECT_ID: YOUR_PROJECT_ID_HERE
+        run: python scripts/export_project.py
+
+      - name: Upload Excel file
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-project-report
+          path: github_project_report.xlsx
