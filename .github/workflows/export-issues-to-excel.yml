@@ -1,82 +1,111 @@
-name: Export Issues to Excel
-
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: "0 6 * * *"
+name: Export GitHub Project to Excel
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    run: |
+      python <<EOF
+      import requests
+      import pandas as pd
+      import os
 
-jobs:
-  export:
-    runs-on: ubuntu-latest
+      token = os.environ["GITHUB_TOKEN"]
 
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      # 🔥 CHANGE THIS
+      PROJECT_ID = "PVT_kwHOD3BjlM4BUQi3"
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+      url = "https://api.github.com/graphql"
 
-      - name: Install dependencies
-        run: pip install pandas openpyxl requests
+      headers = {
+        "Authorization": f"Bearer {token}"
+      }
 
-      - name: Export GitHub Issues to Excel
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-        run: |
-          python <<EOF
-          import requests
-          import pandas as pd
-          import os
-
-          token = os.environ["GITHUB_TOKEN"]
-          repo = os.environ["REPO"]
-
-          headers = {
-              "Authorization": f"Bearer {token}",
-              "Accept": "application/vnd.github+json"
+      query = """
+      query ($projectId: ID!) {
+      node(id: $projectId) {
+        ... on ProjectV2 {
+          items(first: 100) {
+            nodes {
+              content {
+                ... on Issue {
+                  number
+                  title
+                  state
+                }
+              }
+              fieldValues(first: 20) {
+                nodes {
+                  ... on ProjectV2ItemFieldNumberValue {
+                    number
+                    field {
+                      ... on ProjectV2FieldCommon {
+                        name
+                      }
+                    }
+                  }
+                  ... on ProjectV2ItemFieldTextValue {
+                    text
+                    field {
+                      ... on ProjectV2FieldCommon {
+                        name
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
+        }
+      }
+      }
+      """
 
-          issues = []
-          page = 1
+      response = requests.post(
+        url,
+        json={"query": query, "variables": {"projectId": PROJECT_ID}},
+        headers=headers
+      )
 
-          while True:
-              url = f"https://api.github.com/repos/{repo}/issues?state=all&per_page=100&page={page}"
-              response = requests.get(url, headers=headers)
-              data = response.json()
+      data = response.json()
 
-              if not data:
-                  break
+      items = data["data"]["node"]["items"]["nodes"]
 
-              for issue in data:
-                  if "pull_request" in issue:
-                      continue
+      rows = []
 
-                  issues.append({
-                      "ID": issue["number"],
-                      "Title": issue["title"],
-                      "State": issue["state"],
-                      "Created At": issue["created_at"],
-                      "Updated At": issue["updated_at"],
-                      "Assignee": issue["assignee"]["login"] if issue["assignee"] else None,
-                      "Labels": ", ".join([label["name"] for label in issue["labels"]])
-                  })
+      for item in items:
+        issue = item.get("content")
+        if not issue:
+            continue
 
-              page += 1
+        row = {
+            "ID": issue["number"],
+            "Title": issue["title"],
+            "State": issue["state"],
+            "Original Estimate Days": None,
+            "Time Spent Days": None,
+            "Remaining Estimate Days": None
+        }
 
-          df = pd.DataFrame(issues)
-          df.to_excel("github_issues.xlsx", index=False)
+        for field in item["fieldValues"]["nodes"]:
+            field_name = field["field"]["name"]
 
-          print(f"Exported {len(df)} issues")
-          EOF
+            if "number" in field:
+                value = field["number"]
+            elif "text" in field:
+                value = field["text"]
+            else:
+                continue
 
-      - name: Upload Excel file
-        uses: actions/upload-artifact@v4
-        with:
-          name: github-issues-report
-          path: github_issues.xlsx
+            if field_name == "Original Estimate Days":
+                row["Original Estimate Days"] = value
+            elif field_name == "Time Spent Days":
+                row["Time Spent Days"] = value
+            elif field_name == "Remaining Estimate Days":
+                row["Remaining Estimate Days"] = value
+
+        rows.append(row)
+
+    df = pd.DataFrame(rows)
+    df.to_excel("github_project_report.xlsx", index=False)
+
+    print(f"Exported {len(df)} items")
+    EOF
