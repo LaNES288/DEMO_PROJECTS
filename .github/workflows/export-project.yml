@@ -27,7 +27,7 @@ jobs:
       - name: Run export script
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PROJECT_ID: YOUR_PROJECT_ID_HERE
+          PROJECT_ID: PVT_kwHOD3BjlM4BUQi3
         run: python scripts/export_project.py
 
       - name: Upload Excel file
